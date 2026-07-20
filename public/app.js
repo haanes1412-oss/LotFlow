@@ -381,6 +381,7 @@ function exportCsv() {
 function renderJob(job) {
   state.jobKind = "price";
   state.jobId = ["queued", "running", "paused"].includes(job.status) ? job.id : null; $("#jobPanel").hidden = false;
+  $("#uploadJobDetails").hidden = true; $("#pauseJob").hidden = true; $("#retryJob").hidden = true;
   const labels = { queued: "Ожидает запуска", running: "Изменяем цены", paused: "Приостановлено", completed: "Очередь завершена", cancelled: "Очередь отменена" };
   $("#jobStatus").textContent = labels[job.status] ?? job.status; $("#jobNumbers").textContent = `${job.completed} готово · ${job.failed} ошибок · ${job.total} всего`;
   $("#jobProgress").style.width = `${job.percent}%`; $("#jobEta").textContent = job.status === "running" ? `Осталось примерно ${Math.ceil(job.remainingSeconds / 60)} мин.` : job.status === "completed" ? "Можно сверить результаты в истории очереди." : "";
@@ -388,11 +389,21 @@ function renderJob(job) {
 }
 
 function renderUploadJob(job) {
-  state.jobKind = "upload"; state.jobId = ["queued", "running", "paused"].includes(job.status) ? job.id : null; $("#jobPanel").hidden = false;
-  const labels = { queued: "Очередь публикации ожидает", running: "Публикуем аккаунты", paused: "Публикация приостановлена", completed: "Публикация завершена", cancelled: "Публикация отменена" };
-  $("#jobStatus").textContent = labels[job.status] ?? job.status; $("#jobNumbers").textContent = `${job.completed} опубликовано · ${job.failed} ошибок · ${job.total} всего`;
-  $("#jobProgress").style.width = `${job.percent}%`; $("#jobEta").textContent = job.status === "running" ? `Осталось примерно ${Math.ceil(job.remainingSeconds / 60)} мин. Можно закрыть вкладку: очередь сохранится локально.` : job.status === "completed" ? "Проверьте опубликованные лоты в Market." : "";
-  $("#resumeJob").hidden = job.status !== "paused"; $("#cancelJob").hidden = !["queued", "running", "paused"].includes(job.status); updateMetrics();
+  state.jobKind = "upload"; state.jobId = job.id; $("#jobPanel").hidden = false; $("#uploadJobDetails").hidden = false;
+  const labels = { queued: "Очередь публикации ожидает", running: "Проверяем и публикуем аккаунты", paused: "Публикация на паузе", completed: "Автозалив завершён", completed_with_errors: "Автозалив завершён с проверками", cancelled: "Автозалив остановлен" };
+  $("#jobStatus").textContent = labels[job.status] ?? job.status;
+  $("#jobNumbers").textContent = `${job.completed} с применённой ценой · ${job.ready} рекомендаций · ${job.review} на проверке · ${job.failed} ошибок · ${job.total} всего`;
+  $("#jobProgress").style.width = `${job.percent}%`; $("#jobEta").textContent = job.status === "running" ? `Осталось примерно ${Math.ceil(job.remainingSeconds / 60)} мин. Пауза не отменяет уже отправленные запросы.` : "Защитная цена сохраняется, пока рекомендация не прошла проверки.";
+  $("#pauseJob").hidden = !["queued", "running"].includes(job.status); $("#resumeJob").hidden = job.status !== "paused"; $("#retryJob").hidden = !(job.status === "completed_with_errors" && job.failed > 0); $("#cancelJob").hidden = !["queued", "running", "paused"].includes(job.status);
+  const statusNames = { queued: "В очереди", submitting: "Отправляется", reconciling: "Сверяем после timeout", published: "Опубликован", normalizing: "Получаем карточку", pricing: "Оцениваем", price_ready: "Цена рассчитана", applying_price: "Применяем цену", done: "Готово", needs_review: "Нужна проверка", failed: "Ошибка", invalid: "Неверная строка", cancelled: "Остановлено" };
+  const body = $("#uploadJobRows"); body.replaceChildren();
+  for (const row of job.rows ?? []) {
+    const tr = document.createElement("tr");
+    const result = row.errorMessage || row.warning || row.explanation || "—";
+    tr.append(tableCell(row.label), tableCell(statusNames[row.status] ?? row.status), tableCell(row.itemId ? `#${row.itemId}` : "—"), tableCell(row.suggestedPrice == null ? "—" : `${money(row.suggestedPrice)} · ${Math.round((row.confidence ?? 0) * 100)}%`), tableCell(row.appliedPrice == null ? "—" : money(row.appliedPrice)), tableCell(result));
+    body.append(tr);
+  }
+  updateMetrics();
 }
 
 async function pollJob(id) {
@@ -443,19 +454,34 @@ async function restoreUploadJob() {
   try { const { jobs } = await request("/api/live/upload-jobs"); const job = jobs.find(x => ["running", "queued", "paused"].includes(x.status)) ?? jobs[0]; if (job) { renderUploadJob(job); if (["running", "queued"].includes(job.status)) pollUploadJob(job.id); } } catch { return; }
 }
 
-function openUploadDialog() { if (!state.liveConfigured) return toast("Для публикации настройте локальный API-токен"); $("#uploadDialog").showModal(); }
-async function readUploadFile(file) {
+async function loadUploadCategories() {
   try {
-    const parsed = JSON.parse(await file.text()); const items = Array.isArray(parsed) ? parsed : parsed.items;
-    if (!Array.isArray(items) || !items.length) throw new Error("Нужен JSON-массив аккаунтов или объект с items");
-    state.uploadItems = items; $("#uploadSummary").textContent = `Готово к проверке: ${items.length} аккаунтов. Публикация начнётся только после подтверждения.`; $("#startUpload").disabled = false;
-  } catch (error) { state.uploadItems = []; $("#uploadSummary").textContent = error.message || "Не удалось прочитать файл"; $("#startUpload").disabled = true; }
+    const data = await request("/api/live/upload-categories"); const select = $("#uploadCategory"); const current = select.value;
+    select.replaceChildren(...data.categories.map(category => { const option = document.createElement("option"); option.value = category.slug; option.textContent = category.title; option.dataset.categoryId = category.id; option.dataset.baseTitle = category.title; return option; }));
+    profileBuilder.setCategories([...new Set([...(state.categories ?? []).map(category => category?.name ?? category?.category ?? category), ...data.categories.map(category => category.slug)])]);
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  } catch { /* WoT and Blitz fallback options remain available */ }
+}
+async function openUploadDialog() { if (!state.liveConfigured) return toast("Для публикации настройте локальный API-токен"); await loadUploadCategories(); updateUploadSummary(); $("#uploadDialog").showModal(); }
+function updateUploadSummary() {
+  const lines = $("#uploadAccountsText").value.split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#"));
+  $("#uploadSummary").textContent = lines.length ? `В очереди будет ${lines.length} строк. Неверный формат будет показан отдельно.` : "Добавьте хотя бы одну строку.";
+  $("#startUpload").disabled = !lines.length;
+}
+async function readUploadFile(file) {
+  try { $("#uploadAccountsText").value = await file.text(); updateUploadSummary(); }
+  catch { $("#uploadSummary").textContent = "Не удалось прочитать TXT-файл"; $("#startUpload").disabled = true; }
 }
 async function startUpload() {
-  if (!state.uploadItems.length) return;
-  if (!confirm(`Создать локальную возобновляемую очередь публикации для ${state.uploadItems.length} аккаунтов?`)) return;
-  if (state.uploadItems.length > 100 && prompt(`Для большой очереди введите число ${state.uploadItems.length}`) !== String(state.uploadItems.length)) return;
-  try { const { job } = await request("/api/live/upload-jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: state.uploadItems, confirmed: true, currency: state.currency }) }); $("#uploadDialog").close(); renderUploadJob(job); pollUploadJob(job.id); }
+  const accountsText = $("#uploadAccountsText").value; const total = accountsText.split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith("#")).length; if (!total) return;
+  const autoApply = $("#uploadAutoApply").checked;
+  if (autoApply && prompt("LotFlow применит только рекомендации, прошедшие safety checks. Для подтверждения риска введите ПРОВЕРИЛ") !== "ПРОВЕРИЛ") return;
+  if (!confirm(`Запустить fast-sell для ${total} строк? Стартовая цена останется защитной до завершения оценки.`)) return;
+  if (total > 100 && prompt(`Для большой очереди введите число ${total}`) !== String(total)) return;
+  let extra; try { extra = JSON.parse($("#uploadExtra").value || "{}"); if (!extra || typeof extra !== "object" || Array.isArray(extra)) throw new Error(); } catch { return toast("Дополнительные параметры должны быть JSON-объектом"); }
+  const selectedCategory = $("#uploadCategory").selectedOptions[0];
+  const config = { category: $("#uploadCategory").value, categoryId: Number(selectedCategory?.dataset.categoryId), baseTitle: selectedCategory?.dataset.baseTitle || selectedCategory?.textContent, extra, region: $("#uploadRegion").value, itemOrigin: $("#uploadOrigin").value, emailType: $("#uploadEmailType").value, guaranteeDuration: Number($("#uploadGuarantee").value), initialPrice: Number($("#uploadInitialPrice").value), parallelism: Number($("#uploadParallel").value), confidenceThreshold: Number($("#uploadConfidence").value), autoEvaluate: $("#uploadAutoEvaluate").checked, autoApply };
+  try { const { job } = await request("/api/live/upload-jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountsText, config, settings: analysisSettings(), confirmed: true, currency: state.currency }) }); $("#uploadDialog").close(); renderUploadJob(job); pollUploadJob(job.id); }
   catch (error) { toast(error.message); }
 }
 
@@ -493,9 +519,12 @@ state.categoryProfiles = profileBuilder.getProfiles();
 
 $("#scanPreset").addEventListener("change", event => applyScanPreset(event.target.value));
 for (const id of ["#marketPages", "#searchPlans", "#marketDetails"]) $(id).addEventListener("input", () => { $("#scanPreset").value = "custom"; $("#scanPresetHelp").textContent = "Свои настройки: больше сценариев и карточек увеличивают время почти линейно."; });
-$("#loadDemo").addEventListener("click", loadDemo); $("#loadLive").addEventListener("click", loadLive); $("#uploadAccounts").addEventListener("click", openUploadDialog); $("#uploadClose").addEventListener("click", () => $("#uploadDialog").close()); $("#uploadFile").addEventListener("change", event => event.target.files[0] && readUploadFile(event.target.files[0])); $("#startUpload").addEventListener("click", startUpload); $("#analyze").addEventListener("click", analyze); $("#filter").addEventListener("input", render); $("#priceSort").addEventListener("change", render); $("#exportCsv").addEventListener("click", exportCsv); $("#applyPrices").addEventListener("click", applyPrices);
+$("#loadDemo").addEventListener("click", loadDemo); $("#loadLive").addEventListener("click", loadLive); $("#uploadAccounts").addEventListener("click", openUploadDialog); $("#uploadClose").addEventListener("click", () => $("#uploadDialog").close()); $("#uploadFile").addEventListener("change", event => event.target.files[0] && readUploadFile(event.target.files[0])); $("#uploadAccountsText").addEventListener("input", updateUploadSummary); $("#startUpload").addEventListener("click", startUpload); $("#analyze").addEventListener("click", analyze); $("#filter").addEventListener("input", render); $("#priceSort").addEventListener("change", render); $("#exportCsv").addEventListener("click", exportCsv); $("#applyPrices").addEventListener("click", applyPrices);
+$("#uploadConfigureCategory").addEventListener("click", () => { const category = $("#uploadCategory").value; $("#uploadDialog").close(); profileBuilder.open(category); });
 $("#currency").addEventListener("change", event => { if (state.snapshotCurrency) { event.target.value = state.currency; return toast("Валюта зафиксирована для загруженной выборки"); } state.currency = event.target.value; syncCurrencyUi(); render(); }); $("#details .dialog-close").addEventListener("click", () => $("#details").close());
 $("#resumeJob").addEventListener("click", async () => { try { const endpoint = state.jobKind === "upload" ? "/api/live/upload-jobs" : "/api/live/jobs"; const { job } = await request(`${endpoint}/${state.jobId}/resume`, { method: "POST" }); if (state.jobKind === "upload") { renderUploadJob(job); pollUploadJob(job.id); } else { renderJob(job); pollJob(job.id); } } catch (error) { toast(error.message); } });
+$("#pauseJob").addEventListener("click", async () => { if (state.jobKind !== "upload" || !state.jobId) return; try { const { job } = await request(`/api/live/upload-jobs/${state.jobId}/pause`, { method: "POST" }); renderUploadJob(job); } catch (error) { toast(error.message); } });
+$("#retryJob").addEventListener("click", async () => { if (state.jobKind !== "upload" || !state.jobId) return; try { const { job } = await request(`/api/live/upload-jobs/${state.jobId}/retry-failed`, { method: "POST" }); renderUploadJob(job); pollUploadJob(job.id); } catch (error) { toast(error.message); } });
 $("#cancelJob").addEventListener("click", async () => { if (!state.jobId || !confirm("Остановить очередь после текущего запроса?")) return; try { const endpoint = state.jobKind === "upload" ? "/api/live/upload-jobs" : "/api/live/jobs"; const { job } = await request(`${endpoint}/${state.jobId}/cancel`, { method: "POST" }); state.jobKind === "upload" ? renderUploadJob(job) : renderJob(job); } catch (error) { toast(error.message); } });
 $("#selectAll").addEventListener("change", event => { state.selected = event.target.checked ? new Set(state.results.filter(x => x.status === "ready" && x.proposedPrice != null).map(x => x.item.id)) : new Set(); render(); });
 $("#rows").addEventListener("change", event => {

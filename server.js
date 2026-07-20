@@ -36,9 +36,16 @@ const client = new LztClient({
 });
 const jobs = new PriceJobManager({ client, filePath: process.env.LZT_JOB_FILE || join(root, "runtime/jobs.json") });
 await jobs.init();
-const uploadJobs = new UploadJobManager({ client, filePath: process.env.LZT_UPLOAD_JOB_FILE || join(root, "runtime/upload-jobs.json") });
+const uploadJobs = new UploadJobManager({
+  client,
+  filePath: process.env.LZT_UPLOAD_JOB_FILE || join(root, "runtime/upload-jobs.json"),
+  secret: process.env.LOTFLOW_UPLOAD_KEY || process.env.LZT_TOKEN || "demo-only-no-upload",
+  evaluator: evaluateUploadedItem,
+  maxParallelism: 3
+});
 await uploadJobs.init();
 const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
+const uploadCategoryLabels = { battlenet: "Battle.net", discord: "Discord", ea: "EA", epicgames: "Epic Games", "escape-from-tarkov": "Escape from Tarkov", fortnite: "Fortnite", gifts: "Подарки", hytale: "Hytale", instagram: "Instagram", llm: "LLM", mihoyo: "HoYoverse", minecraft: "Minecraft", riot: "Riot Games", roblox: "Roblox", socialclub: "Rockstar Social Club", steam: "Steam", supercell: "Supercell", telegram: "Telegram", tiktok: "TikTok", uplay: "Ubisoft Connect", vpn: "VPN-сервисы", warface: "Warface", "world-of-tanks": "World of Tanks", "wot-blitz": "WoT Blitz" };
 
 async function jsonBody(request) {
   if (!/^application\/json(?:;|$)/i.test(request.headers["content-type"] ?? "")) throw new Error("Ожидается Content-Type: application/json");
@@ -116,6 +123,14 @@ async function categoryGames(categoryName) {
     if (error.status === 404) return null;
     throw error;
   }
+}
+
+async function uploadCategoryCatalog() {
+  const categories = categoryMap(await client.categories());
+  return [...categories.entries()].map(([id, value]) => {
+    const slug = canonicalCategory(value);
+    return { id: Number(id), slug, title: uploadCategoryLabels[slug] ?? String(value) };
+  }).filter(category => Number.isInteger(category.id) && category.id > 0 && category.slug).sort((a, b) => a.title.localeCompare(b.title, "ru"));
 }
 
 function categoryDetailBudgets(grouped, maximum) {
@@ -305,6 +320,54 @@ async function createSnapshot(body) {
   };
 }
 
+// The upload worker passes the verified LZT card here. Pricing remains fully
+// inside LotFlow: category profiles, sales history, analog search, confidence
+// and the same safety gates used by the normal repricing screen.
+async function evaluateUploadedItem(rawItem, { config, settings = {} }) {
+  const categories = categoryMap(await client.categories());
+  const body = {
+    settings,
+    maxMarketPages: 1,
+    maxSearchPlans: Math.min(24, Math.max(4, Number(settings.maxSearchPlans) || 8)),
+    maxDetailedMarketItems: 24
+  };
+  const collected = await collectSnapshotMarket({
+    body,
+    rawTargets: [rawItem],
+    categories,
+    currency: config.currency,
+    includeHistory: true,
+    maxHistoryItems: 100
+  });
+  const fieldCatalog = buildFieldCatalog(collected.targets, collected.market, collected.schemas, settings.categoryProfiles);
+  const automatic = resolveAutomaticProfiles({
+    targets: collected.targets,
+    market: collected.market,
+    fieldCatalog,
+    categoryProfiles: settings.categoryProfiles,
+    excludedPrices: exactPrices(settings.excludedPrices)
+  });
+  const result = analyzeBatch(collected.targets, collected.market, {
+    ...settings,
+    lowConfidenceAction: "manual",
+    excludedPrices: exactPrices(settings.excludedPrices),
+    categoryProfiles: automatic.profiles
+  })[0];
+  if (!result) return { price: null, confidence: 0, safeToApply: false, explanation: "Оценщик не получил проверенную карточку" };
+  const confidence = Number(result.confidence) || 0;
+  const safeToApply = result.status === "ready"
+    && result.proposedPrice != null
+    && confidence >= config.confidenceThreshold
+    && !/ориентировочно|низкая уверенность|ручн/i.test(`${result.source} ${result.reason}`);
+  return {
+    price: result.proposedPrice,
+    confidence,
+    safeToApply,
+    explanation: `${result.source}. ${result.reason}`,
+    analogs: result.analogs?.map(item => ({ itemId: item.id, price: item.price, similarity: item.similarity })) ?? []
+  };
+}
+
 async function api(request, response, url) {
   if (request.method !== "GET" && request.method !== "HEAD") assertTrustedMutation(request);
   if (url.pathname === "/api/status") return send(response, 200, { ok: true, version: appVersion, liveConfigured: Boolean(process.env.LZT_TOKEN), currency: defaultCurrency, apiBase: client.baseUrl, csrfToken });
@@ -324,6 +387,7 @@ async function api(request, response, url) {
     return send(response, 200, { results: results.map(publicResult), quality: buildQualityReport(results), fieldCatalog, autoProfiles: automatic.report });
   }
   if (url.pathname === "/api/live/categories" && request.method === "GET") return send(response, 200, await client.categories());
+  if (url.pathname === "/api/live/upload-categories" && request.method === "GET") return send(response, 200, { categories: await uploadCategoryCatalog() });
   if (url.pathname === "/api/live/snapshot" && request.method === "POST") return send(response, 200, await createSnapshot(await jsonBody(request)));
   if (url.pathname === "/api/live/owned" && request.method === "POST") {
     const body = await jsonBody(request); return send(response, 200, await client.ownedItemsAll(body.query, { maxPages: body.maxPages ?? 100 }));
@@ -347,11 +411,18 @@ async function api(request, response, url) {
   if (url.pathname === "/api/live/upload-jobs" && request.method === "GET") return send(response, 200, { jobs: uploadJobs.list() });
   if (url.pathname === "/api/live/upload-jobs" && request.method === "POST") {
     const body = await jsonBody(request); if (body.confirmed !== true) return send(response, 400, { error: "Требуется confirmed=true" });
-    return send(response, 202, { job: await uploadJobs.create({ items: body.items, currency: body.currency ?? defaultCurrency }) });
+    const catalog = await uploadCategoryCatalog();
+    const requestedSlug = canonicalCategory(body.config?.category);
+    const selected = catalog.find(category => category.slug === requestedSlug || category.id === Number(body.config?.categoryId));
+    if (!selected) return send(response, 400, { error: "Категория не найдена в текущем каталоге LZT Market" });
+    const config = { ...body.config, category: selected.slug, categoryId: selected.id, baseTitle: selected.title };
+    return send(response, 202, { job: await uploadJobs.create({ accountsText: body.accountsText, config, settings: body.settings, currency: body.currency ?? defaultCurrency }) });
   }
-  const uploadJobMatch = url.pathname.match(/^\/api\/live\/upload-jobs\/([\w-]+)(?:\/(resume|cancel))?$/);
+  const uploadJobMatch = url.pathname.match(/^\/api\/live\/upload-jobs\/([\w-]+)(?:\/(pause|resume|cancel|retry-failed))?$/);
   if (uploadJobMatch && request.method === "GET" && !uploadJobMatch[2]) { const job = uploadJobs.get(uploadJobMatch[1]); return job ? send(response, 200, { job }) : send(response, 404, { error: "Очередь публикации не найдена" }); }
+  if (uploadJobMatch && request.method === "POST" && uploadJobMatch[2] === "pause") return send(response, 200, { job: await uploadJobs.pause(uploadJobMatch[1]) });
   if (uploadJobMatch && request.method === "POST" && uploadJobMatch[2] === "resume") return send(response, 200, { job: await uploadJobs.resume(uploadJobMatch[1]) });
+  if (uploadJobMatch && request.method === "POST" && uploadJobMatch[2] === "retry-failed") return send(response, 200, { job: await uploadJobs.retryFailed(uploadJobMatch[1]) });
   if (uploadJobMatch && request.method === "POST" && uploadJobMatch[2] === "cancel") return send(response, 200, { job: await uploadJobs.cancel(uploadJobMatch[1]) });
   return false;
 }
