@@ -1,10 +1,10 @@
 # LotFlow 1.0
 
-![Версия](https://img.shields.io/badge/version-1.0-168c5c?style=flat-square&labelColor=111713)
-![Тесты](https://img.shields.io/badge/tests-175%20passed-168c5c?style=flat-square&labelColor=111713&logo=githubactions&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-20%2B-168c5c?style=flat-square&labelColor=111713&logo=nodedotjs&logoColor=white)
-![Лицензия](https://img.shields.io/badge/license-MIT-168c5c?style=flat-square&labelColor=111713)
-![LZT Market](https://img.shields.io/badge/LZT-Market%20pricing-168c5c?style=flat-square&labelColor=111713)
+![Версия](https://img.shields.io/badge/version-1.0-19c37d?style=for-the-badge)
+![Тесты](https://img.shields.io/badge/tests-175%20passed-19c37d?style=for-the-badge&logo=githubactions&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Лицензия](https://img.shields.io/badge/license-MIT-168c5c?style=for-the-badge)
+![LZT Market](https://img.shields.io/badge/LZT-Market%20pricing-111713?style=for-the-badge)
 
 LotFlow помогает продавцам LZT Market оценивать лоты по рыночным аналогам, проверять рекомендации и массово применять подтверждённые цены.
 
