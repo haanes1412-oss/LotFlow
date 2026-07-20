@@ -1,0 +1,16 @@
+Как опубликовать LotFlow на GitHub
+
+1. На GitHub нажмите New repository.
+2. Название репозитория: LotFlow.
+3. Description: Оценка и массовое применение рыночных цен для лотов LZT Market.
+4. Выберите Public.
+5. Не добавляйте README, .gitignore и лицензию: они уже находятся в проекте.
+6. Нажмите Create repository.
+7. На странице пустого репозитория выберите uploading an existing file.
+8. Распакуйте lotflow-1.0.zip и загрузите содержимое папки lotflow. Не загружайте один ZIP вместо файлов проекта.
+9. В поле Commit changes напишите: LotFlow 1.0 release.
+10. После загрузки откройте вкладку Actions и дождитесь зелёной проверки CI.
+11. В разделе About добавьте темы: lzt-market, pricing, marketplace, nodejs, automation.
+12. Для отдельной версии откройте Releases, нажмите Draft a new release, создайте тег v1.0.0 и приложите lotflow-1.0.zip.
+
+Никогда не загружайте токен LZT API, файл .env, логи или содержимое папки runtime.

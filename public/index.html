@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Универсальная массовая оценка лотов LZT Market">
+  <title>LotFlow</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/enhancements.css">
+  <link rel="stylesheet" href="/redesign.css">
+</head>
+<body>
+  <div class="shell">
+    <main>
+      <div class="topbar">
+        <a class="brand" href="#" aria-label="LotFlow"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-wordmark"><span><b>Lot</b><strong>Flow</strong></span><small>MARKET PRICING</small></span></a>
+        <nav class="topnav" aria-label="Основная навигация">
+          <button id="pricingNav" class="nav-item active">Переоценка</button>
+          <button id="historyNav" class="nav-item">Очередь и история</button>
+          <button id="settingsNav" class="nav-item">Подключение API</button>
+        </nav>
+      </div>
+      <header>
+        <div class="hero-copy"><p class="eyebrow">ОЦЕНКА И АВТОЗАЛИВ ДЛЯ LZT MARKET</p><h1>Рыночная цена.<br><span>Сразу для всех лотов.</span></h1></div>
+        <div class="hero-start">
+          <div><p class="eyebrow">НАЧНИТЕ ОТСЮДА</p><h2>Настройте категории под свои лоты</h2><small>LotFlow сам предложит важные параметры. Вы сможете проверить результат на пяти ценах.</small></div>
+          <button id="openProfiles" class="button primary hero-constructor" type="button">Открыть конструктор категорий</button>
+          <div class="header-actions"><span id="apiBadge" class="badge neutral">Проверка API…</span><button id="uploadAccounts" class="button ghost" type="button" hidden>Залить аккаунты</button><button id="loadLive" class="button ghost" hidden>Загрузить мои лоты</button><button id="loadDemo" class="button ghost">Загрузить демо</button></div>
+        </div>
+      </header>
+
+      <section class="summary-grid">
+        <article class="metric"><div><small>Выбрано лотов</small><strong id="targetCount">0</strong><span id="categoryCount">0 категорий</span></div></article>
+        <article class="metric"><div><small>Готово автоматически</small><strong id="readyCount">0</strong><span>с объяснением цены</span></div></article>
+        <article class="metric"><div><small>Нужна проверка</small><strong id="manualCount">0</strong><span>низкая уверенность</span></div></article>
+        <article class="metric"><div><small>Средняя цена</small><strong id="averagePrice">—</strong><span>после стратегии</span></div></article>
+      </section>
+
+      <section class="control-card">
+        <div class="section-heading"><div><p class="eyebrow">СТРАТЕГИЯ</p><h2>Как считать цену</h2></div><div class="profile-actions"><label class="file-button">Импорт лотов<input id="fileInput" type="file" accept="application/json"></label></div></div>
+        <div class="controls">
+          <label><span>Источник цены</span><select id="strategy"><option value="blended">Активные + продажи</option><option value="active">Только активные аналоги</option><option value="lastSold">Последний проданный</option></select></label>
+          <label><span>Снижение цены</span><div class="input-suffix"><input id="discount" type="number" min="0" max="99" value="0"><b>%</b></div></label>
+          <label><span>Минимальная цена</span><div class="input-suffix"><input id="minimumPrice" type="number" min="1" value="1"><b id="minimumCurrency">₽</b></div></label>
+          <label><span>При низкой уверенности</span><select id="lowConfidence"><option value="approximate">Всегда предложить цену</option><option value="manual">Оставить без цены</option></select></label>
+          <label><span>Валюта</span><select id="currency"><option value="rub">RUB — ₽</option><option value="usd">USD — $</option><option value="eur">EUR — €</option><option value="uah">UAH — ₴</option><option value="kzt">KZT — ₸</option><option value="byn">BYN — Br</option><option value="gbp">GBP — £</option><option value="cny">CNY — ¥</option><option value="try">TRY — ₺</option><option value="jpy">JPY — ¥</option><option value="brl">BRL — R$</option></select></label>
+          <button id="analyze" class="button primary">Проанализировать</button>
+        </div>
+        <div class="scan-speed">
+          <div><b>Скорость сканирования</b><small id="scanPresetHelp">Быстро: проверяет все аккаунты, но не тратит минуты на сотни лишних карточек.</small></div>
+          <select id="scanPreset" aria-label="Режим сканирования"><option value="fast">Быстро · рекомендуется</option><option value="balanced">Баланс</option><option value="deep">Максимальная глубина</option><option value="custom">Свои настройки</option></select>
+        </div>
+        <div class="advanced-controls">
+          <label><span>Технические цены</span><input id="technicalPrices" value="99999, 9999" placeholder="99999, 9999"></label>
+          <label><span>Страниц поиска</span><input id="marketPages" type="number" min="1" max="10" value="1"></label>
+          <label><span>Поисковых сценариев</span><input id="searchPlans" type="number" min="1" max="80" value="8" title="Больше выборок — лучше покрытие диапазонов, но дольше загрузка"></label>
+          <label><span>Подробных карточек</span><input id="marketDetails" type="number" min="0" max="1000" value="0" title="Равномерно распределяются между категориями и ценовыми уровнями; 0 отключает догрузку"></label>
+        </div>
+        <div class="hint"><p>Сначала показываем цену и объяснение. Изменения применяются только после вашего подтверждения.</p></div>
+        <div id="analysisProgress" class="analysis-progress" hidden><div class="ap-head"><b id="apPhase">Анализ</b><span id="apElapsed"></span></div><div class="ap-track"><i id="apBar"></i></div><small id="apDetail"></small></div>
+        <div id="snapshotDiagnostics" class="snapshot-diagnostics" hidden></div>
+      </section>
+
+      <section class="results-card">
+        <div class="section-heading results-title"><div><p class="eyebrow">РЕЗУЛЬТАТ</p><h2>Таблица переоценки</h2></div><div class="tools"><input id="filter" type="search" placeholder="Поиск по лотам"><select id="priceSort" aria-label="Сортировка по рекомендованной цене"><option value="original">Порядок загрузки</option><option value="desc">Цена: сначала дорогие</option><option value="asc">Цена: сначала дешёвые</option></select><button id="exportCsv" class="button ghost">Экспорт CSV</button></div></div>
+        <div id="profileNotices" class="profile-notices" hidden></div>
+        <div class="reference-library"><div><b>Проверенные цены</b><small id="referenceSummary"></small></div><div class="reference-actions"><label class="file-button">Импорт базы<input id="referenceImport" type="file" accept="application/json"></label><button id="referenceExport" class="button ghost" type="button">Экспорт</button><button id="referenceClear" class="button ghost" type="button">Очистить</button></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input id="selectAll" type="checkbox"></th><th>Лот</th><th>Категория</th><th>Сейчас</th><th>Рекомендация</th><th>Уверенность</th><th>Основание</th><th></th></tr></thead>
+            <tbody id="rows"><tr class="empty"><td colspan="8"><b>Загрузите лоты или демоданные</b><span>Здесь появятся цены и найденные аналоги</span></td></tr></tbody>
+          </table>
+        </div>
+        <div id="jobPanel" class="job-panel" hidden><div><div class="job-copy"><b id="jobStatus">Очередь</b><span id="jobNumbers"></span></div><div class="job-bar"><i id="jobProgress"></i></div><small id="jobEta"></small></div><div class="job-actions"><button id="resumeJob" class="button ghost" hidden>Продолжить</button><button id="cancelJob" class="button ghost" hidden>Остановить</button></div></div>
+        <footer class="result-footer"><p><b id="selectedCount">0</b> цен выбрано для применения</p><button id="applyPrices" class="button primary" disabled>Создать очередь изменения цен</button></footer>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="profileDialog" class="profile-dialog">
+    <button id="profileClose" class="dialog-close" aria-label="Закрыть">×</button>
+    <p class="eyebrow">КОНСТРУКТОР КАТЕГОРИЙ</p>
+    <h2>Настройка цены для категории</h2>
+    <p class="profile-intro">Выберите простой режим и желаемый результат. Технические параметры понадобятся только экспертам.</p>
+    <section class="profile-persona" aria-label="Уровень настройки">
+      <div>
+        <p class="eyebrow">УРОВЕНЬ КОНТРОЛЯ</p>
+        <div id="profileExperience" class="profile-experience">
+          <button type="button" data-experience="guided">Автоматически</button>
+          <button type="button" data-experience="manual">Настроить под себя</button>
+          <button type="button" data-experience="expert">Для экспертов</button>
+        </div>
+        <small id="profileExperienceHelp"></small>
+      </div>
+      <label><span>Какой результат нужен</span><select id="profilePricingGoal"><option value="fast">Продать быстрее</option><option value="market">Рыночная цена</option><option value="premium">Продать дороже</option><option value="custom">Настрою сам</option></select></label>
+    </section>
+    <div id="profileGuidedSummary" class="profile-guided-summary">
+      <div><b>1</b><span>Выберите категорию</span></div>
+      <div><b>2</b><span>Укажите цель продажи</span></div>
+      <div><b>3</b><span>Проверьте п��ть цен</span></div>
+      <p>LotFlow сам найдёт значимые характеристики, отсеет служебные поля и подберёт безопасные аналоги.</p>
+    </div>
+    <section id="profileLearning" class="profile-learning">
+      <div class="profile-learning-head">
+        <div><p class="eyebrow">ОБУЧЕНИЕ НА ВАШИХ ЦЕНАХ</p><h3>Покажите правильные цены на знакомых лотах</h3><small>Три примера запустят настройку, пять и больше позволят проверить её надёжность.</small></div>
+        <span id="profileLearningStatus" class="learning-status">Не обучен</span>
+      </div>
+      <div id="profileLearningExamples" class="profile-learning-examples"></div>
+      <div class="profile-learning-actions"><span>LotFlow сравнит ваши цены со своим расчётом и подстроит профиль.</span><button id="profileLearn" class="button primary" type="button">Настроить по моим ценам</button></div>
+    </section>
+    <details id="profileHints" class="category-hints" hidden></details>
+
+    <div class="profile-identity">
+      <label><span>Категория</span><select id="profileCategory"></select></label>
+      <label><span>Название профиля</span><input id="profileName" placeholder="Например, Epic Games — личные аккаунты"></label>
+      <label><span>Источник цены</span><select id="profileStrategy"><option value="blended">Активные + продажи</option><option value="active">Самое дешёвое активное</option><option value="lastSold">Последнее проданное</option><option value="inherit">Как в общей стратегии</option></select></label>
+    </div>
+
+    <div class="profile-section-heading">
+      <div><p class="eyebrow">ПАРАМЕТРЫ</p><h3>Что должно совпадать</h3></div>
+      <div class="profile-add"><input id="profileNewField" placeholder="Системное имя параметра"><button id="profileAddField" class="button ghost" type="button">Добавить поле</button></div>
+    </div>
+    <p class="profile-help"><b>Обязательно</b> исключает аналог при несовпадении. <b>Важно</b> повышает или понижает сходство, но не удаляет аналог. Начните с 2–4 важных полей и проверьте профиль на пяти лотах.</p>
+    <div class="profile-catalog-tools">
+      <div id="profileCatalogSummary" class="profile-catalog-summary">Кат��лог полей появится после анализа.</div>
+      <input id="profileFieldFilter" type="search" placeholder="Найти поле">
+      <button id="profileAutoFields" class="button ghost" type="button">Заполнить автоматически</button>
+    </div>
+    <div class="profile-field-header simple"><span>Поле</span><span>Как учитывать</span></div>
+    <div id="profileStrictness" class="profile-strictness" hidden></div>
+    <div id="profileFields" class="profile-fields"></div>
+
+    <div class="profile-price-row">
+      <label><span>Скидка для категории, %</span><input id="profileDiscount" type="number" min="0" max="99" placeholder="как в главном окне"></label>
+      <label><span>Ниже этой цены не ставить</span><input id="profilePriceMin" type="number" min="1" placeholder="не задана"></label>
+      <label><span>Выше этой цены не ставить</span><input id="profilePriceMax" type="number" min="1" placeholder="не задана"></label>
+      <label><span>Валюта</span><input id="profileCurrency" value="RUB" disabled></label>
+    </div>
+
+    <details id="profileAdvancedSettings" class="profile-advanced">
+      <summary>Расширенные настройки профиля</summary>
+      <div class="profile-settings">
+        <label><span>Расчёт по активным</span><select id="profileActiveEstimator"><option value="weightedMedian">Взвешенная медиана</option><option value="lowerQuartile">Нижний квартиль</option><option value="median">Обычная медиана</option><option value="lowest">Минимальная цена</option></select></label>
+        <label><span>Минимальное сходство, %</span><input id="profileMinSimilarity" type="number" min="0" max="100"></label>
+        <label><span>Ручная проверка ниже, %</span><input id="profileManualThreshold" type="number" min="0" max="100"></label>
+        <label><span>Минимум аналогов</span><input id="profileMinAnalogs" type="number" min="1" max="20"></label>
+        <label><span>Максимум аналогов</span><input id="profileMaxAnalogs" type="number" min="1" max="20"></label>
+        <label><span>Окно лучшего уровня, %</span><input id="profileWindow" type="number" min="0" max="50"></label>
+        <label><span>Ценовой разрыв, ×</span><input id="profileOutlierRatio" type="number" min="2" max="100" step="0.5"></label>
+        <label><span>Коэффициент цены, %</span><input id="profileMultiplier" type="number" min="1" max="1000"></label>
+      </div>
+      <div class="profile-switches">
+        <label><input id="profileFilterPriceOutliers" type="checkbox"><span>Отсекать технические цены и разорванные уровни</span></label>
+        <label><input id="profileFallback" type="checkbox"><span>Разрешить медиану категории, если аналогов нет</span></label>
+        <label><input id="profileUnconfigured" type="checkbox"><span>Слабо учитывать остальные поля</span></label>
+      </div>
+      <input id="profileAutomatic" type="checkbox" hidden>
+      <div class="profile-section-heading">
+        <div><p class="eyebrow">ЦЕНА БЕЗ АНАЛОГОВ</p><h3>Фиксированные правила</h3></div>
+        <button id="profileAddRule" class="button ghost" type="button">+ Добавить правило</button>
+      </div>
+      <div id="profileRules" class="profile-rules"></div>
+    </details>
+
+    <div id="profilePreview" class="profile-preview" hidden></div>
+
+    <footer class="profile-footer">
+      <div><button id="profileReset" class="button ghost" type="button">Сбросить поля</button><label class="file-button">Импорт профилей<input id="profileImport" type="file" accept="application/json"></label><button id="profileExport" class="button ghost" type="button">Экспорт профилей</button></div>
+      <div><button id="profileTest" class="button ghost" type="button">Проверить на 5 моих лотах</button><button id="profileSave" class="button primary" type="button">Сохранить и использовать</button></div>
+    </footer>
+  </dialog>
+
+  <dialog id="details"><button class="dialog-close" aria-label="Закрыть">×</button><p class="eyebrow">ОБЪЯСНЕНИЕ ЦЕНЫ</p><h2 id="detailTitle"></h2><div id="detailBody"></div></dialog>
+  <dialog id="uploadDialog" class="upload-dialog">
+    <button id="uploadClose" class="dialog-close" aria-label="Закрыть">×</button><p class="eyebrow">ОЧЕРЕДЬ ПУБЛИКАЦИИ</p><h2>Стабильная заливка аккаунтов</h2>
+    <p class="profile-intro">Импортируйте JSON-массив аккаунтов. Очередь сохраняется локально: при закрытии вкладки, перезапуске приложения или временной ошибке её можно продолжить с последней строки. Логины и приватная информация не показываются в истории.</p>
+    <label class="file-button">Выбрать JSON<input id="uploadFile" type="file" accept="application/json"></label><small id="uploadSummary" class="upload-summary">Файл пока не выбран.</small>
+    <details class="upload-format"><summary>Формат файла</summary><pre>[{ "title": "WoT | 6 топ 100 прем", "price": 350, "category_id": 14, "item_origin": "personal", "description": "Публичное описание", "information": "Приватные данные" }]</pre><small>Обязательны: <code>price</code>, <code>category_id</code>, <code>item_origin</code> и <code>title</code> (или <code>title_en</code>/<code>auto_generate_title</code>). Дополнительные поля соответствуют API Market.</small></details>
+    <footer class="upload-footer"><button id="startUpload" class="button primary" disabled>Создать очередь публикации</button></footer>
+  </dialog>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
