@@ -30,6 +30,21 @@ export const CATEGORY_PROFILES = {
     weights: { spam_block: 3, inactivity_days: 2.5, country: 0.8, sessions: 0.4 },
     hardFields: ["spam_block"]
   },
+  steam: {
+    aliases: ["steam"],
+    labels: {
+      banned: "Блокировки",
+      email_access: "Доступ к почте",
+      inventory_value: "Оценка инвентаря",
+      games_count: "Количество игр",
+      level: "Уровень Steam",
+      country: "Страна"
+    },
+    weights: { banned: 4, email_access: 2.5, inventory_value: 1 },
+    hardFields: ["banned"],
+    requiredDataFields: [],
+    requiredOverlapFields: []
+  },
   minecraft: {
     aliases: ["minecraft"],
     labels: { banned: "Баны", email_relinked: "Почта перевязана", capes: "Плащи", hypixel_level: "Hypixel" },

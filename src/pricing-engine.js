@@ -377,7 +377,14 @@ function conservativeVpnFallback(item) {
 }
 
 function noDataEstimate(target, rawMarket, excludedPrices, minimumPrice, discountPercent, profile, targetHistoryIds, candidateReport) {
-  const categoryBase = categoryFallbackPrice(target, rawMarket, excludedPrices, profile.filterPriceOutliers);
+  // Steam cannot be safely priced from a broad category median. Game count,
+  // profile level and country have weak or highly conditional market value,
+  // while raw inventory totals can contain broken item prices. Without analogs
+  // accepted by the cautious Steam profile, return only the configured minimum
+  // as an explicitly low-confidence placeholder instead of a fake market price.
+  const categoryBase = target.category === "steam"
+    ? null
+    : categoryFallbackPrice(target, rawMarket, excludedPrices, profile.filterPriceOutliers);
   const modelBase = target.category === "world-of-tanks" ? conservativeWotFallback(target)
     : target.category === "minecraft" ? conservativeMinecraftFallback(target)
     : target.category === "vpn" ? conservativeVpnFallback(target)
@@ -398,7 +405,9 @@ function noDataEstimate(target, rawMarket, excludedPrices, minimumPrice, discoun
     source: modelBase ? "Ориентировочно · модель категории" : "Ориентировочно · минимальная цена",
     reason: modelBase
       ? "Точных аналогов нет: показан осторожный ориентир по характеристикам категории"
-      : "Рынок не вернул аналогов: показана минимальная допустимая цена, чтобы лот не остался без ��езультата",
+      : target.category === "steam"
+        ? "Для Steam недостаточно надёжных параметров: количество игр, уровень и страна не использованы как самостоятельные признаки цены"
+      : "Рынок не вернул аналогов: показана минимальная допустимая цена, чтобы лот не остался без результата",
     diagnostics: {
       historyIds: targetHistoryIds.size,
       marketItemsChecked: rawMarket.length,

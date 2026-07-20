@@ -6,7 +6,7 @@
     { "id": "244612673", "category": "world-of-tanks", "title": "WoT | 31 топ 75 прем Wargaming", "price": 99999, "seller_id": "2239881", "item_origin": "brute", "attributes": { "top_count": 31, "premium_count": 75, "gold": 4200, "region": "eu", "phone_linked": false, "tanks": ["IS-7", "T57 Heavy", "Leopard 1"] } },
     { "id": "demo-tg", "category": "telegram", "title": "Telegram, отлега 12 дней", "price": 99999, "seller_id": "2239881", "attributes": { "inactivity_days": 12, "spam_block": false, "country": "RU", "sessions": 1 } },
     { "id": "demo-mc", "category": "minecraft", "title": "Minecraft Hypixel 48 lvl", "price": 99999, "seller_id": "2239881", "attributes": { "banned": false, "email_relinked": false, "capes": ["Migrator"], "hypixel_level": 48 } },
-    { "id": "demo-steam", "category": "steam", "title": "Steam 24 игры, 8 уровень", "price": 99999, "seller_id": "2239881", "attributes": { "games_count": 24, "level": 8, "country": "RU", "inventory_value": 340 } }
+    { "id": "demo-steam", "category": "steam", "title": "Steam с инвентарём", "price": 99999, "seller_id": "2239881", "attributes": { "inventory_value": 340, "email_access": true, "banned": false } }
   ],
   "market": [
     { "id": "tt-a", "category": "tiktok", "title": "TikTok Cookie 380 followers", "price": 3, "seller_id": "91", "item_origin": "stealer", "state": "active", "attributes": { "followers": 380, "following": 500, "posts": 10, "likes": 140, "cookie_login": true, "live": true, "phone_linked": false } },
@@ -20,7 +20,7 @@
     { "id": "tg-c", "category": "telegram", "title": "Telegram spam block", "price": 12, "seller_id": "93", "state": "active", "attributes": { "inactivity_days": 12, "spam_block": true, "country": "RU", "sessions": 1 } },
     { "id": "mc-a", "category": "minecraft", "title": "Minecraft Hypixel 45", "price": 180, "seller_id": "91", "state": "active", "attributes": { "banned": false, "email_relinked": false, "capes": ["Migrator"], "hypixel_level": 45 } },
     { "id": "mc-b", "category": "minecraft", "title": "Minecraft Hypixel 52", "price": 210, "seller_id": "92", "state": "sold", "sold_at": 1783500000, "attributes": { "banned": false, "email_relinked": false, "capes": ["Migrator"], "hypixel_level": 52 } },
-    { "id": "steam-a", "category": "steam", "title": "Steam 20 games", "price": 145, "seller_id": "91", "state": "active", "attributes": { "games_count": 20, "level": 7, "country": "RU", "inventory_value": 300 } },
-    { "id": "steam-b", "category": "steam", "title": "Steam 28 games", "price": 165, "seller_id": "92", "state": "sold", "sold_at": 1783550000, "attributes": { "games_count": 28, "level": 9, "country": "RU", "inventory_value": 400 } }
+    { "id": "steam-a", "category": "steam", "title": "Steam inventory", "price": 145, "seller_id": "91", "state": "active", "attributes": { "inventory_value": 300, "email_access": true, "banned": false } },
+    { "id": "steam-b", "category": "steam", "title": "Steam inventory", "price": 165, "seller_id": "92", "state": "sold", "sold_at": 1783550000, "attributes": { "inventory_value": 400, "email_access": true, "banned": false } }
   ]
 }

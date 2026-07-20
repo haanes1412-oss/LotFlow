@@ -116,6 +116,31 @@ const BUILTIN_PROFILES = {
     },
     fixedPriceRules: []
   },
+  steam: {
+    name: "Steam — осторожная оценка",
+    minSimilarity: 0.72,
+    strategy: "inherit",
+    activeEstimator: "weightedMedian",
+    minAnalogs: 3,
+    maxAnalogs: 6,
+    manualThreshold: 0.78,
+    similarityWindow: 0.08,
+    allowCategoryFallback: false,
+    priceMultiplier: 100,
+    filterPriceOutliers: true,
+    priceOutlierRatio: 5,
+    useUnconfiguredFields: false,
+    fields: {
+      ...commonFields,
+      banned: { label: "Блокировки", mode: "exact", weight: 4, missing: "ignore" },
+      email_access: { label: "Доступ к почте", mode: "exact", weight: 2.5, missing: "ignore" },
+      inventory_value: { label: "Оценка инвентаря", mode: "similarity", weight: 1, missing: "ignore", required: false },
+      games_count: { label: "Количество игр", mode: "ignore", weight: 0, missing: "ignore", required: false, search: false },
+      level: { label: "Уровень Steam", mode: "ignore", weight: 0, missing: "ignore", required: false, search: false },
+      country: { label: "Страна", mode: "ignore", weight: 0, missing: "ignore", required: false, search: false }
+    },
+    fixedPriceRules: []
+  },
   minecraft: {
     name: "Minecraft — базовый",
     minSimilarity: 0.56,

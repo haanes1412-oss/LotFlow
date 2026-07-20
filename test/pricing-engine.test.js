@@ -311,8 +311,8 @@ test("VPN subscription through 2029 is not priced like a near-expired plan", () 
 });
 
 test("low-confidence approximate mode always returns a selectable estimate", () => {
-  const target = { id: 1, category: "steam", price: 99999, attributes: { level: 100 } };
-  const market = [{ id: 2, category: "steam", price: 50, attributes: { level: 1 } }];
+  const target = { id: 1, category: "future-game", price: 99999, attributes: { level: 100 } };
+  const market = [{ id: 2, category: "future-game", price: 50, attributes: { level: 1 } }];
   const result = analyzeItem(target, market, { strategy: "active", lowConfidenceAction: "approximate" });
   assert.equal(result.proposedPrice, 50);
   assert.equal(result.status, "ready");
@@ -448,17 +448,17 @@ test("a supported lower tier is used instead of a detached expensive tier", () =
 });
 
 test("last sold strategy selects most recent comparable sale", () => {
-  const target = { id: 1, category: "steam", price: 99999, attributes: { games_count: 20, level: 5 } };
+  const target = { id: 1, category: "future-game", price: 99999, attributes: { games_count: 20, level: 5 } };
   const market = [
-    { id: 2, category: "steam", price: 100, state: "sold", sold_at: 10, attributes: { games_count: 19, level: 5 } },
-    { id: 3, category: "steam", price: 130, state: "sold", sold_at: 20, attributes: { games_count: 22, level: 6 } }
+    { id: 2, category: "future-game", price: 100, state: "sold", sold_at: 10, attributes: { games_count: 19, level: 5 } },
+    { id: 3, category: "future-game", price: 130, state: "sold", sold_at: 20, attributes: { games_count: 22, level: 6 } }
   ];
   assert.equal(analyzeItem(target, market, { strategy: "lastSold" }).proposedPrice, 130);
 });
 
 test("discount is configurable from zero to ninety-nine percent", () => {
-  const target = { id: 1, category: "steam", price: 99999, attributes: { games_count: 20 } };
-  const market = [{ id: 2, category: "steam", price: 100, state: "active", attributes: { games_count: 20 } }];
+  const target = { id: 1, category: "future-game", price: 99999, attributes: { games_count: 20 } };
+  const market = [{ id: 2, category: "future-game", price: 100, state: "active", attributes: { games_count: 20 } }];
   assert.equal(analyzeItem(target, market, { strategy: "active", discountPercent: 25 }).proposedPrice, 75);
   assert.equal(analyzeItem(target, market, { strategy: "active", discountPercent: 99 }).proposedPrice, 1);
 });
@@ -538,18 +538,18 @@ test("unknown categories use dynamic attributes", () => {
 });
 
 test("own and placeholder listings are excluded from analogs", () => {
-  const target = { id: 1, category: "steam", seller_id: 7, price: 99999, attributes: { level: 5 } };
+  const target = { id: 1, category: "future-game", seller_id: 7, price: 99999, attributes: { level: 5 } };
   const market = [
-    { id: 2, category: "steam", seller_id: 7, price: 1, attributes: { level: 5 } },
-    { id: 3, category: "steam", seller_id: 9, price: 99999, attributes: { level: 5 } },
-    { id: 4, category: "steam", seller_id: 8, price: 80, attributes: { level: 5 } }
+    { id: 2, category: "future-game", seller_id: 7, price: 1, attributes: { level: 5 } },
+    { id: 3, category: "future-game", seller_id: 9, price: 99999, attributes: { level: 5 } },
+    { id: 4, category: "future-game", seller_id: 8, price: 80, attributes: { level: 5 } }
   ];
   assert.equal(analyzeItem(target, market, { strategy: "active" }).proposedPrice, 80);
 });
 
 test("legitimate expensive analogs are not excluded", () => {
-  const target = { id: 1, category: "steam", seller_id: 7, price: 99999, attributes: { level: 50 } };
-  const market = [{ id: 2, category: "steam", seller_id: 8, price: 25000, attributes: { level: 50 } }];
+  const target = { id: 1, category: "future-game", seller_id: 7, price: 99999, attributes: { level: 50 } };
+  const market = [{ id: 2, category: "future-game", seller_id: 8, price: 25000, attributes: { level: 50 } }];
   assert.equal(analyzeItem(target, market, { strategy: "active", excludedPrices: [99999] }).proposedPrice, 25000);
 });
 
@@ -607,7 +607,7 @@ test("approximate spam-block Telegram price includes the seller's eighty percent
 });
 
 test("minimum price protects an automatic recommendation", () => {
-  const target = { id: 1, category: "steam", price: 99999, attributes: { level: 5 } };
-  const market = [{ id: 2, category: "steam", price: 3, attributes: { level: 5 } }];
+  const target = { id: 1, category: "future-game", price: 99999, attributes: { level: 5 } };
+  const market = [{ id: 2, category: "future-game", price: 3, attributes: { level: 5 } }];
   assert.equal(analyzeItem(target, market, { strategy: "active", minimumPrice: 10 }).proposedPrice, 10);
 });
